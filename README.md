@@ -6,6 +6,6 @@
 ## Tai-e Assignments for Static Program Analysis
 </div>
 
-### Getting Started
+These assignments have been completed and [tested](https://oj.pascal-lab.net/) on 2024-12-25.
 
-If you want to do the assignments, please start with "*Overview of Tai-e Assignments*" [[中文](https://tai-e.pascal-lab.net/intro/overview.html)][[English](https://tai-e.pascal-lab.net/en/intro/overview.html)].
+Ref: "*Overview of Tai-e Assignments*" [[中文](https://tai-e.pascal-lab.net/intro/overview.html)][[English](https://tai-e.pascal-lab.net/en/intro/overview.html)].
