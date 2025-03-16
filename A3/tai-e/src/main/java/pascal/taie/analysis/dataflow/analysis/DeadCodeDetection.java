@@ -44,6 +44,8 @@ import pascal.taie.ir.stmt.AssignStmt;
 import pascal.taie.ir.stmt.If;
 import pascal.taie.ir.stmt.Stmt;
 import pascal.taie.ir.stmt.SwitchStmt;
+import pascal.taie.util.collection.Pair;
+import soot.jimple.IfStmt;
 
 import java.util.Comparator;
 import java.util.Set;
@@ -71,7 +73,78 @@ public class DeadCodeDetection extends MethodAnalysis {
         Set<Stmt> deadCode = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
         // TODO - finish me
         // Your task is to recognize dead code in ir and add it to deadCode
+
+        Set<Stmt> reachableCode  = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
+        dfsCfgForReachableCode(cfg, constants, reachableCode, cfg.getEntry());
+        deadCode.addAll(cfg.getNodes());
+        deadCode.removeAll(reachableCode);
+
+        Set<Stmt> deadAssign = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
+        for (Stmt stmt: reachableCode) {
+            if (stmt instanceof AssignStmt<?,?> &&
+                    hasNoSideEffect(((AssignStmt<?, ?>) stmt).getRValue()) &&
+                    ((AssignStmt<?, ?>) stmt).getLValue() instanceof Var &&
+                    !liveVars.getOutFact(stmt).contains((Var) ((AssignStmt<?, ?>) stmt).getLValue())) {
+                deadAssign.add(stmt);
+            }
+        }
+        deadCode.addAll(deadAssign);
+
+        deadCode.remove(cfg.getEntry());
+        deadCode.remove(cfg.getExit());
+
         return deadCode;
+    }
+
+    private static void dfsCfgForReachableCode(CFG<Stmt> cfg,
+                                                    DataflowResult<Stmt, CPFact> constants,
+                                                    Set<Stmt> reachableCode,
+                                                    Stmt node) {
+        reachableCode.add(node);
+
+        if (node == cfg.getExit())
+            return;
+
+        if (node instanceof If) {
+            Value conditionVal = ConstantPropagation.evaluate(((If) node).getCondition(), constants.getInFact(node));
+            if (conditionVal.isConstant()) {
+                if (conditionVal.getConstant() == 0) {
+                    dfsSpecialEdge(cfg, constants, reachableCode, node, Edge.Kind.IF_FALSE);
+                }
+                else {
+                    dfsSpecialEdge(cfg, constants, reachableCode, node, Edge.Kind.IF_TRUE);
+                }
+                return;
+            }
+        }
+        else if (node instanceof SwitchStmt) {
+            Value varVal = ConstantPropagation.evaluate(((SwitchStmt) node).getVar(), constants.getInFact(node));
+            if (varVal.isConstant()) {
+                for (Pair<Integer, Stmt> pair: ((SwitchStmt) node).getCaseTargets()) {
+                    if (pair.first() == varVal.getConstant()) {
+                        dfsCfgForReachableCode(cfg, constants, reachableCode, pair.second());
+                        return;
+                    }
+                }
+                dfsCfgForReachableCode(cfg, constants, reachableCode, ((SwitchStmt) node).getDefaultTarget());
+                return;
+            }
+        }
+
+        for (Stmt succ: cfg.getSuccsOf(node))
+            if (!reachableCode.contains(succ))
+                dfsCfgForReachableCode(cfg, constants, reachableCode, succ);
+    }
+
+    private static void dfsSpecialEdge(CFG<Stmt> cfg,
+                                 DataflowResult<Stmt, CPFact> constants,
+                                 Set<Stmt> reachableCode,
+                                 Stmt node,
+                                 Edge.Kind kind) {
+        for (Edge<Stmt> edge: cfg.getOutEdgesOf(node))
+            if (edge.getKind() == kind)
+                if (!reachableCode.contains(edge.getTarget()))
+                    dfsCfgForReachableCode(cfg, constants, reachableCode, edge.getTarget());
     }
 
     /**

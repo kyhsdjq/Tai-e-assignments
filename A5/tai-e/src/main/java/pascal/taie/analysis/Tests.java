@@ -52,6 +52,14 @@ public final class Tests {
         doTestPTA("cipta", dir, main, opts);
     }
 
+    public static void main(String[] args) {
+        if (args.length == 2) {
+            testCIPTA(args[0], args[1]);
+        } else {
+            System.out.println("Usage: <CLASS_PATH> <CLASS_NAME>");
+        }
+    }
+
     private static void doTestPTA(
             String id, String dir, String main, String... opts) {
         List<String> args = new ArrayList<>();

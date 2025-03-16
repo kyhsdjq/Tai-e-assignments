@@ -24,8 +24,11 @@ package pascal.taie.analysis.dataflow.inter;
 
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.icfg.ICFG;
+import pascal.taie.analysis.graph.icfg.ICFGEdge;
 import pascal.taie.util.collection.SetQueue;
 
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,10 +62,44 @@ class InterSolver<Method, Node, Fact> {
     }
 
     private void initialize() {
-        // TODO - finish me
+        // TODO - finish me (finished)
+
+        Set<Node> entries = new HashSet<>();
+        icfg.entryMethods().forEach(method -> {entries.add(icfg.getEntryOf(method));});
+
+        for (Node node: icfg) {
+            if (entries.contains(node)) {
+                result.setInFact(node, analysis.newBoundaryFact(node));
+                result.setOutFact(node, analysis.newBoundaryFact(node));
+            }
+            else {
+                result.setInFact(node, analysis.newInitialFact());
+                result.setOutFact(node, analysis.newInitialFact());
+            }
+        }
     }
 
     private void doSolve() {
-        // TODO - finish me
+        // TODO - finish me (finished)
+
+        workList = new LinkedList<>();
+        workList.addAll(icfg.getNodes());
+        // remove all entries
+        icfg.entryMethods().forEach(method -> {workList.remove(icfg.getEntryOf(method));});
+
+        while (!workList.isEmpty()) {
+            Node node = workList.poll();
+            if (analysis.transferNode(node, result.getInFact(node), result.getOutFact(node))) {
+                // OUT changed
+                for (ICFGEdge<Node> outEdge: icfg.getOutEdgesOf(node)) {
+                    analysis.meetInto(analysis.transferEdge(outEdge, result.getOutFact(node)), result.getInFact(outEdge.getTarget()));
+                    workList.add(outEdge.getTarget());
+                }
+            }
+        }
+    }
+
+    public void addNodeToWorklist(Node node) {
+        workList.add(node);
     }
 }

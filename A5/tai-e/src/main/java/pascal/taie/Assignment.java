@@ -22,6 +22,9 @@
 
 package pascal.taie;
 
+import pascal.taie.analysis.Tests;
+import pascal.taie.analysis.pta.ci.CIPTA;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
